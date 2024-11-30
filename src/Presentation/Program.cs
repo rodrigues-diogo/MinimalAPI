@@ -1,11 +1,19 @@
+using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
-namespace MinimalAPI
+namespace Presentation
 {
     public class Program
     {
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            var connection = builder.Configuration.GetConnectionString("");
+            builder.Services.AddDbContext<StudentEnrollmentDbContext>(options =>
+            {
+                options.UseSqlServer(connection);
+            });
 
             // Add services to the container.
             builder.Services.AddAuthorization();

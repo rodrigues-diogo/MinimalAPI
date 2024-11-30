@@ -1,4 +1,4 @@
-namespace MinimalAPI
+namespace Presentation
 {
     public class WeatherForecast
     {

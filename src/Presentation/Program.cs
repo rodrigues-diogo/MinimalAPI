@@ -9,7 +9,7 @@ namespace Presentation
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            var connection = builder.Configuration.GetConnectionString("");
+            var connection = builder.Configuration.GetConnectionString("StudentEnrollmentDbConnection");
             builder.Services.AddDbContext<StudentEnrollmentDbContext>(options =>
             {
                 options.UseSqlServer(connection);

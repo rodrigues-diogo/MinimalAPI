@@ -1,4 +1,5 @@
 using Infrastructure;
+using Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Presentation
@@ -35,24 +36,68 @@ namespace Presentation
 
             app.UseAuthorization();
 
-            var summaries = new[]
+            app.MapGet("/courses", async (StudentEnrollmentDbContext context) =>
             {
-                "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-            };
-
-            app.MapGet("/weatherforecast", (HttpContext httpContext) =>
-            {
-                var forecast = Enumerable.Range(1, 5).Select(index =>
-                    new WeatherForecast
-                    {
-                        Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                        TemperatureC = Random.Shared.Next(-20, 55),
-                        Summary = summaries[Random.Shared.Next(summaries.Length)]
-                    })
-                    .ToArray();
-                return forecast;
+                return await context.Courses.ToListAsync();
             })
-            .WithName("GetWeatherForecast")
+            .WithName("GetCourses")
+            .WithOpenApi();
+
+            app.MapGet("/courses/{id}", async (StudentEnrollmentDbContext context, Guid id) =>
+            {
+                return await context.Courses.FindAsync(id)
+                    is Course course
+                        ? Results.Ok(course)
+                        : Results.NotFound();
+            })
+            .WithName("GetCourseById")
+            .WithOpenApi();
+
+            app.MapPost("/courses", async (StudentEnrollmentDbContext context, Course course) =>
+            {
+                course.CreatedAt = DateTime.Now;
+                await context.Courses.AddAsync(course);
+                await context.SaveChangesAsync();
+
+                return Results.Created($"/courses/{course.Id}", course);
+            })
+            .WithName("CreateCourse")
+            .WithOpenApi();
+
+            app.MapPut("/courses/{id}", async (StudentEnrollmentDbContext context, Course course, Guid id) =>
+            {
+                var record = await context.Courses.FindAsync(id);
+
+                if (record is null) return Results.NotFound();
+
+                record.Title = course.Title;
+                record.Credits = course.Credits;
+                record.ModifiedBy = course.ModifiedBy;
+                record.ModifiedAt = DateTime.UtcNow;
+
+                if (context.ChangeTracker.HasChanges())
+                    Console.WriteLine("Course has been modified");
+
+                await context.SaveChangesAsync();
+
+                return Results.NoContent();
+            })
+            .WithName("UpdateCourse")
+            .WithOpenApi();
+
+            app.MapDelete("/courses/{id}", async (StudentEnrollmentDbContext context, Guid id) =>
+            {
+                if (await context.Courses.FindAsync(id) is Course course)
+                {
+                    context.Courses.Remove(course);
+                    await context.SaveChangesAsync();
+
+                    return Results.NoContent();
+                }
+
+                return Results.NotFound();
+            })
+            .WithName("DeleteCourse")
             .WithOpenApi();
 
             app.Run();

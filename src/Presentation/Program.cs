@@ -1,6 +1,7 @@
-using Infrastructure;
+﻿using Infrastructure;
 using Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
+using Presentation.Endpoints;
 
 namespace Presentation
 {
@@ -99,6 +100,12 @@ namespace Presentation
             })
             .WithName("DeleteCourse")
             .WithOpenApi();
+
+            app.MapStudentEndpoints();
+
+                        app.MapCourseEndpoints();
+
+                        app.MapEnrollmentEndpoints();
 
             app.Run();
         }

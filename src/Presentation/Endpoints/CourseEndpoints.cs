@@ -2,6 +2,7 @@
 using Infrastructure.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Presentation.DTOs;
 
 namespace Presentation.Endpoints;
 
@@ -13,23 +14,47 @@ public static class CourseEndpoints
 
         group.MapGet("/", async (StudentEnrollmentDbContext db) =>
         {
-            return await db.Courses.ToListAsync();
+            List<CourseDto> data = [];
+            var courses = await db.Courses.ToListAsync();
+
+            foreach (var course in courses)
+            {
+                data.Add(
+                    new CourseDto()
+                    {
+                        Id = course.Id,
+                        Title = course.Title,
+                        Credits = course.Credits,
+                    }
+                );
+            };
+
+            return data;
         })
         .WithName("GetAllCourses")
         .WithOpenApi();
 
-        group.MapGet("/{id}", async Task<Results<Ok<Course>, NotFound>> (Guid id, StudentEnrollmentDbContext db) =>
+        group.MapGet("/{id}", async Task<Results<Ok<CourseDto>, NotFound>> (Guid id, StudentEnrollmentDbContext db) =>
         {
-            return await db.Courses.AsNoTracking()
-                .FirstOrDefaultAsync(model => model.Id == id)
-                is Course model
-                    ? TypedResults.Ok(model)
-                    : TypedResults.NotFound();
+            var result = await db.Courses.AsNoTracking()
+                .FirstOrDefaultAsync(model => model.Id == id);
+
+            if(result == null)
+                TypedResults.NotFound();
+
+            var data = new CourseDto()
+            {
+                Id = result.Id,
+                Title = result.Title,
+                Credits = result.Credits,
+            };
+
+            return TypedResults.Ok(data);
         })
         .WithName("GetCourseById")
         .WithOpenApi();
 
-        group.MapPut("/{id}", async Task<Results<Ok, NotFound>> (Guid id, Course course, StudentEnrollmentDbContext db) =>
+        group.MapPut("/{id}", async Task<Results<Ok, NotFound>> (Guid id, CourseDto course, StudentEnrollmentDbContext db) =>
         {
             var affected = await db.Courses
                 .Where(model => model.Id == id)
@@ -37,10 +62,8 @@ public static class CourseEndpoints
                     .SetProperty(m => m.Title, course.Title)
                     .SetProperty(m => m.Credits, course.Credits)
                     .SetProperty(m => m.Id, course.Id)
-                    .SetProperty(m => m.CreatedBy, course.CreatedBy)
-                    .SetProperty(m => m.CreatedAt, course.CreatedAt)
-                    .SetProperty(m => m.ModifiedBy, course.ModifiedBy)
-                    .SetProperty(m => m.ModifiedAt, course.ModifiedAt)
+                    .SetProperty(m => m.ModifiedBy, "User")
+                    .SetProperty(m => m.ModifiedAt, DateTime.UtcNow)
                     );
 
             return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
@@ -48,9 +71,17 @@ public static class CourseEndpoints
         .WithName("UpdateCourse")
         .WithOpenApi();
 
-        group.MapPost("/", async (Course course, StudentEnrollmentDbContext db) =>
+        group.MapPost("/", async (CourseDto course, StudentEnrollmentDbContext db) =>
         {
-            db.Courses.Add(course);
+            var data = new Course()
+            {
+                Title = course.Title,
+                Credits = course.Credits,
+                CreatedBy = "User",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.Courses.Add(data);
             await db.SaveChangesAsync();
 
             return TypedResults.Created($"course/{course.Id}", course);

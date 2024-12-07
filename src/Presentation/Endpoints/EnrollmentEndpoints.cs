@@ -1,7 +1,9 @@
-﻿using Infrastructure;
+﻿using AutoMapper;
+using Infrastructure;
 using Infrastructure.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Presentation.DTOs;
 
 namespace Presentation.Endpoints;
 
@@ -11,20 +13,23 @@ public static class EnrollmentEndpoints
     {
         var group = routes.MapGroup("enrollment").WithTags(nameof(Enrollment));
 
-        group.MapGet("/", async (StudentEnrollmentDbContext db) =>
+        group.MapGet("/", async (StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            return await db.Enrollments.ToListAsync();
+            var enrollment = await db.Enrollments.ToListAsync();
+            return mapper.Map<EnrollmentDto>(enrollment);
         })
         .WithName("GetAllEnrollments")
         .WithOpenApi();
 
-        group.MapGet("/{id}", async Task<Results<Ok<Enrollment>, NotFound>> (Guid id, StudentEnrollmentDbContext db) =>
+        group.MapGet("/{id}", async Task<Results<Ok<EnrollmentDto>, NotFound>> (Guid id, StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            return await db.Enrollments.AsNoTracking()
-                .FirstOrDefaultAsync(model => model.Id == id)
-                is Enrollment model
-                    ? TypedResults.Ok(model)
-                    : TypedResults.NotFound();
+            var enrollment = await db.Enrollments.AsNoTracking()
+                .FirstOrDefaultAsync(model => model.Id == id);
+
+            if (enrollment is null)
+                return TypedResults.NotFound();
+
+            return TypedResults.Ok(mapper.Map<EnrollmentDto>(enrollment));
         })
         .WithName("GetEnrollmentById")
         .WithOpenApi();
@@ -37,10 +42,8 @@ public static class EnrollmentEndpoints
                     .SetProperty(m => m.CourseId, enrollment.CourseId)
                     .SetProperty(m => m.StudentId, enrollment.StudentId)
                     .SetProperty(m => m.Id, enrollment.Id)
-                    .SetProperty(m => m.CreatedBy, enrollment.CreatedBy)
-                    .SetProperty(m => m.CreatedAt, enrollment.CreatedAt)
-                    .SetProperty(m => m.ModifiedBy, enrollment.ModifiedBy)
-                    .SetProperty(m => m.ModifiedAt, enrollment.ModifiedAt)
+                    .SetProperty(m => m.ModifiedBy, "User")
+                    .SetProperty(m => m.ModifiedAt, DateTime.UtcNow)
                 );
 
             return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
@@ -48,9 +51,13 @@ public static class EnrollmentEndpoints
         .WithName("UpdateEnrollment")
         .WithOpenApi();
 
-        group.MapPost("/", async (Enrollment enrollment, StudentEnrollmentDbContext db) =>
+        group.MapPost("/", async (EnrollmentDto enrollment, StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            db.Enrollments.Add(enrollment);
+            var data = mapper.Map<Enrollment>(enrollment);
+            data.CreatedBy = "User";
+            data.CreatedAt = DateTime.UtcNow;
+
+            db.Enrollments.Add(data);
             await db.SaveChangesAsync();
 
             return TypedResults.Created($"enrollment/{enrollment.Id}", enrollment);

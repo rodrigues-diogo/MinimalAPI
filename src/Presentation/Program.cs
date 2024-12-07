@@ -1,4 +1,5 @@
-﻿using Infrastructure;
+﻿using AutoMapper;
+using Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Endpoints;
 
@@ -22,6 +23,8 @@ namespace Presentation
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddAutoMapper(typeof(MapperConfiguration));
 
             var app = builder.Build();
 

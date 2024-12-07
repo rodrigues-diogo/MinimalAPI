@@ -1,4 +1,5 @@
-﻿using Infrastructure;
+﻿using AutoMapper;
+using Infrastructure;
 using Infrastructure.Entities;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -12,44 +13,24 @@ public static class CourseEndpoints
     {
         var group = routes.MapGroup("course").WithTags(nameof(Course));
 
-        group.MapGet("/", async (StudentEnrollmentDbContext db) =>
+        group.MapGet("/", async (StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            List<CourseDto> data = [];
             var courses = await db.Courses.ToListAsync();
 
-            foreach (var course in courses)
-            {
-                data.Add(
-                    new CourseDto()
-                    {
-                        Id = course.Id,
-                        Title = course.Title,
-                        Credits = course.Credits,
-                    }
-                );
-            };
-
-            return data;
+            return mapper.Map<List<CourseDto>>(courses);
         })
         .WithName("GetAllCourses")
         .WithOpenApi();
 
-        group.MapGet("/{id}", async Task<Results<Ok<CourseDto>, NotFound>> (Guid id, StudentEnrollmentDbContext db) =>
+        group.MapGet("/{id}", async Task<Results<Ok<CourseDto>, NotFound>> (Guid id, StudentEnrollmentDbContext db, IMapper mapper) =>
         {
             var result = await db.Courses.AsNoTracking()
                 .FirstOrDefaultAsync(model => model.Id == id);
 
-            if(result == null)
+            if (result == null)
                 TypedResults.NotFound();
 
-            var data = new CourseDto()
-            {
-                Id = result.Id,
-                Title = result.Title,
-                Credits = result.Credits,
-            };
-
-            return TypedResults.Ok(data);
+            return TypedResults.Ok(mapper.Map<CourseDto>(result));
         })
         .WithName("GetCourseById")
         .WithOpenApi();
@@ -61,7 +42,6 @@ public static class CourseEndpoints
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(m => m.Title, course.Title)
                     .SetProperty(m => m.Credits, course.Credits)
-                    .SetProperty(m => m.Id, course.Id)
                     .SetProperty(m => m.ModifiedBy, "User")
                     .SetProperty(m => m.ModifiedAt, DateTime.UtcNow)
                     );
@@ -71,15 +51,11 @@ public static class CourseEndpoints
         .WithName("UpdateCourse")
         .WithOpenApi();
 
-        group.MapPost("/", async (CourseDto course, StudentEnrollmentDbContext db) =>
+        group.MapPost("/", async (CourseDto course, StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            var data = new Course()
-            {
-                Title = course.Title,
-                Credits = course.Credits,
-                CreatedBy = "User",
-                CreatedAt = DateTime.UtcNow
-            };
+            var data = mapper.Map<Course>(course);
+            data.CreatedBy = "User";
+            data.CreatedAt = DateTime.UtcNow;
 
             db.Courses.Add(data);
             await db.SaveChangesAsync();

@@ -15,9 +15,9 @@ public static class StudentEndpoints
 
         group.MapGet("/", async (StudentEnrollmentDbContext db, IMapper mapper) =>
         {
-            var student = await db.Students.ToListAsync();
+            var students = await db.Students.ToListAsync();
 
-            return mapper.Map<StudentDto>(student);
+            return mapper.Map<List<StudentDto>>(students);
         })
         .WithName("GetAllStudents")
         .WithOpenApi();

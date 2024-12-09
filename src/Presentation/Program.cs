@@ -1,6 +1,6 @@
-﻿using AutoMapper;
-using Infrastructure;
+﻿using Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Presentation.Configurations;
 using Presentation.Endpoints;
 
 namespace Presentation
